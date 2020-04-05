@@ -33,12 +33,13 @@ public:
 	}
 	void detach()
 	{
-		pthread_detach(m_id);
+		if (m_id > 0)
+			pthread_detach(m_id);
 	}
+	pthread_t getId() { return m_id; }
 
 private:
 	pthread_t m_id;
-
 
 private:
 
