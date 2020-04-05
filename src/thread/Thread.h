@@ -10,7 +10,7 @@ class Thread
 
 public:
 	template<typename Fun, typename ...Args>
-	Thread(Fun fun, Args... args)
+	Thread(Fun&& fun, Args&&... args)
 	{
 		int errorCode = Thread_f<Fun, Args...>::start_thread(&m_id, 
 			std::forward<Fun>(fun), 
@@ -44,7 +44,6 @@ private:
 	pthread_t m_id;
 
 private:
-
 
 	template<typename Fun, typename ...Args>
 	class Thread_f
