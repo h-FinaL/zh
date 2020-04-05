@@ -12,8 +12,9 @@ public:
 	template<typename Fun, typename ...Args>
 	Thread(Fun fun, Args... args)
 	{
-		Thread_f<Fun, Args...>* thread_f = new Thread_f<Fun, Args...>(fun, args...);
-		int errorCode = thread_f->run(&m_id);
+		int errorCode = Thread_f<Fun, Args...>::start_thread(&m_id, 
+			std::forward<Fun>(fun), 
+			std::forward<Args>(args)...);
 		if (errorCode)
 		{
 			std::cout << "pthread_create thread fail, errorCode = " << errorCode << std::endl;
@@ -39,9 +40,11 @@ public:
 	pthread_t getId() { return m_id; }
 
 private:
+	//线程id
 	pthread_t m_id;
 
 private:
+
 
 	template<typename Fun, typename ...Args>
 	class Thread_f
@@ -64,14 +67,17 @@ private:
 	public:
 		Thread_f(Fun fun, Args... args) : m_fun(fun), m_args(args...) {}
 		~Thread_f() {}
-		int run(pthread_t* id)
+
+		static int start_thread(pthread_t* id, Fun&& fun, Args&&... args)
 		{
-			return pthread_create(id, NULL, Thread_f::thread_handle, this);
+			Thread_f<Fun, Args...>* thread_f = new Thread_f<Fun, Args...>(fun, args...);
+			return pthread_create(id, NULL, Thread_f::thread_handle, thread_f);
 		}
 		static void* thread_handle(void* thread_f)
 		{
 			Thread_f<Fun, Args...>* th = (Thread_f<Fun, Args...>*) thread_f;
 			th->invoke(IndexType());
+			delete th;
 		}
 		template<SizeType ...Index>
 		void invoke(IndexTuple<Index...>)
@@ -85,5 +91,4 @@ private:
 
 };
 
-
-} // namespace zh
+}
