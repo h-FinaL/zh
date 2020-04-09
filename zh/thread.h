@@ -1,5 +1,7 @@
-﻿#include <pthread.h>
-#include <functional>
+﻿#ifndef __ZH_THREAD_H__
+#define __ZH_THREAD_H__
+
+#include <pthread.h>
 #include <tuple>
 
 namespace zh
@@ -7,7 +9,6 @@ namespace zh
 
 class Thread
 {
-
 public:
 	template<typename Fun, typename ...Args>
 	Thread(Fun&& fun, Args&&... args)
@@ -40,7 +41,6 @@ public:
 	pthread_t getId() { return m_id; }
 
 private:
-	//线程id
 	pthread_t m_id;
 
 private:
@@ -91,3 +91,5 @@ private:
 };
 
 }
+
+#endif
