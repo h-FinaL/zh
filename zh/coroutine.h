@@ -8,7 +8,9 @@ namespace zh
 #define CO_STACK_SIZE 128 * 1024
 #define uint unsigned int
 
-typedef void (*callback)(void*);
+static __thread Coroutine* t_coroutine;
+
+typedef void (*callback)();
 
 class Coroutine
 {
@@ -16,11 +18,16 @@ public:
 
     Coroutine(callback pfn, uint stackSize = CO_STACK_SIZE);
     ~Coroutine();
+    void resume();
+    void yield();
     void reset();
-    void swapIn();
-    void swapOut();
+    void reset();
+
+private:
+    Coroutine();
 
 public:
+    static Coroutine* getThis();
     static void mainFun();
     static void setThis(Coroutine* Coroutine);
     static void yield();

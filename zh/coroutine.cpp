@@ -14,7 +14,6 @@ Coroutine::Coroutine(callback pfn, uint stackSize) :
     m_context.uc_stack.ss_sp = m_stack;
     m_context.uc_stack.ss_size = m_stackSize;
 
-
 }
 
 
