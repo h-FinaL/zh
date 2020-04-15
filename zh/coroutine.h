@@ -12,9 +12,23 @@ namespace zh
 
 typedef void (*callback)(void*);
 
-class ThrCoroutine;
+class CoroutineEnv;
 class Coroutine
 {
+    enum State {
+        /// 初始化状态
+        INIT,
+        /// 暂停状态
+        HOLD,
+        /// 执行中状态
+        EXEC,
+        /// 结束状态
+        TERM,
+        /// 可执行状态
+        READY,
+        /// 异常状态
+        EXCEPT
+    };
 public:
 
     Coroutine(callback pfn, void* args, int stackSize = CO_STACK_SIZE);
@@ -22,18 +36,18 @@ public:
     void resume();
     void yield();
     void reset();
-    void reset();
 
 private:
     Coroutine();
 
 public:
-    static void yieldCurrThr();
-    static void coroutineFunc(Coroutine* coroutine);
-    static ThrCoroutine* getCurrThr();
+    static void yieldCurrEnv();
+    static void coroutineFunc();
+    static CoroutineEnv* getCurrEnv();
+    static Coroutine* getCurrCo();
 
 private:
-    friend ThrCoroutine;
+    friend CoroutineEnv;
     callback m_pfn;
     void* m_args;
 
@@ -43,12 +57,15 @@ private:
     ucontext_t m_context;
 };
 
-class ThrCoroutine
+class CoroutineEnv
 {
 private:
-    ThrCoroutine();
-    friend Coroutine;
+    CoroutineEnv();
+    void addCurrCo(Coroutine* coroutine);
+    void yieldCurrCo();
     std::stack<Coroutine*> pCoStack;
+    
+    friend Coroutine;
 };
     
 }
