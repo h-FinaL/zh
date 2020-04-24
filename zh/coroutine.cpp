@@ -9,13 +9,21 @@ Coroutine::Coroutine() :
     m_pfn(nullptr),
     m_args(nullptr),
     m_stackSize(0),
-    m_stack(nullptr)
+    m_stack(nullptr),
+    m_isMain(1)
 {
 }
 
-Coroutine::Coroutine(callback pfn, void* args, int stackSize = CO_STACK_SIZE) :
+Coroutine::~Coroutine()
+{
+    if (m_isMain == 0 && m_stack != nullptr)
+        free(m_stack);
+}
+
+Coroutine::Coroutine(callback pfn, void* args, int stackSize) :
     m_pfn(pfn),
-    m_args(args)
+    m_args(args),
+    m_isMain(0)
 {
     m_stackSize = stackSize ? stackSize : CO_STACK_SIZE;
     m_stack = malloc(m_stackSize);
@@ -32,7 +40,7 @@ void Coroutine::coroutineFunc()
     Coroutine* currCo = getCurrCo();
     if (currCo->m_pfn)
         currCo->m_pfn(currCo->m_args);
-    
+    yieldCurrEnv();
 }
 
 void Coroutine::resume()
@@ -75,9 +83,12 @@ CoroutineEnv::CoroutineEnv()
 void CoroutineEnv::yieldCurrCo()
 {
     Coroutine* currCo = pCoStack.top();
-    pCoStack.pop();
-    Coroutine* lastCo = pCoStack.top();
-    swapcontext(&currCo->m_context, &lastCo->m_context);
+    if (currCo->m_isMain == 0)
+    {
+        pCoStack.pop();
+        Coroutine* lastCo = pCoStack.top();
+        swapcontext(&currCo->m_context, &lastCo->m_context);
+    }
 }
 
 void CoroutineEnv::addCurrCo(Coroutine* coroutine)

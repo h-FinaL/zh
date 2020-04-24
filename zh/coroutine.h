@@ -15,25 +15,13 @@ typedef void (*callback)(void*);
 class CoroutineEnv;
 class Coroutine
 {
-    enum State {
-        /// 初始化状态
-        INIT,
-        /// 暂停状态
-        HOLD,
-        /// 执行中状态
-        EXEC,
-        /// 结束状态
-        TERM,
-        /// 可执行状态
-        READY,
-        /// 异常状态
-        EXCEPT
-    };
 public:
 
     Coroutine(callback pfn, void* args, int stackSize = CO_STACK_SIZE);
     ~Coroutine();
+    //把目标协程与当前正在执行的协程交换
     void resume();
+    //协程让出使用权，切换到上一个协程交换
     void yield();
     void reset();
 
@@ -54,6 +42,7 @@ private:
     int m_stackSize;
     void* m_stack;
 
+    int m_isMain;
     ucontext_t m_context;
 };
 
