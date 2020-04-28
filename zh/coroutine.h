@@ -6,9 +6,10 @@
 #include <memory>
 #include <stdlib.h>
 
+#define CO_STACK_SIZE 128 * 1024
+
 namespace zh
 {
-#define CO_STACK_SIZE 128 * 1024
 
 typedef void (*callback)(void*);
 
