@@ -9,6 +9,11 @@
 #include "log_event.h"
 #include "log_formatter.h"
 
+//LogEvent(const char* file_name, int line, LogLevel::Level level, int thread_id = 0, int co_id = 0);
+
+#define LOG(logger, level) LogEvent(&logger, __FILE__, __LINE__, level).get_stream()
+#define LOG_END LogEvent::end
+
 namespace zh
 {
 
@@ -18,17 +23,11 @@ public:
     typedef std::shared_ptr<Logger> ptr;
 
     Logger(LogLevel::Level filer_level = LogLevel::Level::DEBUG);
-    void log(LogLevel::Level level, LogEvent&& event);
-
-    void debug(LogEvent&& event) { log(LogLevel::DEBUG, std::forward<LogEvent>(event)); }
-    void info(LogEvent&& event) { log(LogLevel::INFO, std::forward<LogEvent>(event)); }
-    void warn(LogEvent&& event) { log(LogLevel::WARN, std::forward<LogEvent>(event)); }
-    void error(LogEvent&& event) { log(LogLevel::ERROR, std::forward<LogEvent>(event)); }
-    void fatal(LogEvent&& event) { log(LogLevel::FATAL, std::forward<LogEvent>(event)); }
+    void log(LogEvent& event);
 
     void add_appender(LogAppender::ptr& appender);
-
     void set_filer_level(LogLevel::Level filer_level) { m_filer_level = filer_level; }
+
 private:
     LogLevel::Level m_filer_level;   //过滤等级
     std::stringstream m_ss;        //日志内容

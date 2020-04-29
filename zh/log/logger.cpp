@@ -8,9 +8,9 @@ Logger::Logger(LogLevel::Level filer_level) :
 {
 }
 
-void Logger::log(LogLevel::Level level, LogEvent&& event)
+void Logger::log(LogEvent& event)
 {
-    if (level >= m_filer_level)
+    if (event.get_level() >= m_filer_level)
     {
         for (auto& i : m_appender_ptr_vec)
         {

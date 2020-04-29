@@ -75,7 +75,7 @@ class LevelFormatItem : public FormatterItem
 {
 public:
     LevelFormatItem();
-    void format(LogEvent& event) { event.get_stream() << LogLevel::getLevel(event.get_level());}
+    void format(LogEvent& event) { event.get_stream() << LogLevel::get_level(event.get_level());}
 };
 
 //%l 行号
