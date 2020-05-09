@@ -30,10 +30,10 @@ private:
     Coroutine();
 
 public:
-    static void yieldCurrEnv();
-    static void coroutineFunc();
-    static CoroutineEnv* getCurrEnv();
-    static Coroutine* getCurrCo();
+    static void yield_curr_env();
+    static void coroutine_func();
+    static CoroutineEnv* get_curr_env();
+    static Coroutine* get_curr_co();
 
 private:
     friend CoroutineEnv;
@@ -51,9 +51,9 @@ class CoroutineEnv
 {
 private:
     CoroutineEnv();
-    void addCurrCo(Coroutine* coroutine);
-    void yieldCurrCo();
-    std::stack<Coroutine*> pCoStack;
+    void add_curr_co(Coroutine* coroutine);
+    void yield_curr_co();
+    std::stack<Coroutine*> p_co_stack;
     
     friend Coroutine;
 };

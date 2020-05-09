@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../../zh/Thread.h"
+#include "../../Thread.h"
 
 void fun1()
 {

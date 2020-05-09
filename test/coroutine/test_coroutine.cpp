@@ -1,6 +1,6 @@
 #include <iostream>
 #include <pthread.h>
-#include "../../zh/coroutine.h"
+#include "../../coroutine.h"
 
 void fun2(void*);
 
@@ -20,7 +20,7 @@ void fun2(void*)
 {
     std::cout << "111" << std::endl;
     std::cout << "222" << std::endl;
-    zh::Coroutine::yieldCurrEnv();
+    zh::Coroutine::yield_curr_env();
     std::cout << "333" << std::endl;
     std::cout << "444" << std::endl;
 }
