@@ -13,10 +13,14 @@ IniFile::IniFile(std::string& file_name) :
 }
 
 IniFile::~IniFile()
-{}
+{
+    release();
+}
 
 void IniFile::load_file(std::string& file_name)
 {
+    release();
+
     m_file_name = file_name;
     std::fstream file(file_name);
     if (!file.is_open())
@@ -126,19 +130,33 @@ void IniFile::write()
     file.close();
 }
 
-void IniFile::add_comment_line(std::string& comment)
+void IniFile::release()
+{
+    for (IniSecticonLine* section_line : m_section_lines)
+    {
+        section_line->m_key_val_lines.clear();
+    }
+    m_section_lines.clear();
+    for (IniLine* line : m_lines)
+    {
+        delete line;
+    }
+}
+
+void IniFile::add_comment_line(const std::string& comment)
 {
     m_lines.push_back(new IniCommentLine(comment));
 }
 
-void IniFile::add_section_line(std::string& section, std::string& comment)
+void IniFile::add_section_line(const std::string& section, const std::string& comment)
 {
-    IniSecticonLine* section_line_p = new IniSecticonLine(section, comment);
-    m_lines.push_back(section_line_p);
-    m_section_lines.push_back(section_line_p);
+    IniSecticonLine* section_line = new IniSecticonLine(section, comment);
+    m_lines.push_back(section_line);
+    m_section_lines.push_back(section_line);
+    section_line->m_last_it = --m_lines.end();
 }
 
-void IniFile::add_key_val_line(std::string& key, std::string& val, std::string& comment)
+void IniFile::add_key_val_line(const std::string& key, const std::string& val, const std::string& comment)
 {
     IniKeyValLine* key_value_line_p = new IniKeyValLine(key, val, comment);
     m_lines.push_back(key_value_line_p);
@@ -146,6 +164,7 @@ void IniFile::add_key_val_line(std::string& key, std::string& val, std::string& 
     auto section_it = --m_section_lines.end();
     //放入section中的键值对链表中
     ((*section_it)->m_key_val_lines).push_back(key_value_line_p);
+    (*section_it)->m_last_it = --m_lines.end();
 }
 
 std::string IniFile::get_string_value(const std::string& section, const std::string& key)
@@ -213,7 +232,43 @@ void IniFile::set_value(const std::string& section, const std::string& key, doub
     ini[section][key] = value_str;
 }
 
-void IniFile::throw_parse_error(std::string& line)
+void IniFile::add_value(const std::string& section, const std::string& key, const std::string& value)
+{
+    auto section_it = m_section_lines.begin();
+    while (section_it != m_section_lines.end())
+    {
+        if ((*section_it)->m_section == section)
+        {
+            break;
+        }
+        ++section_it;
+    }
+    if (section_it == m_section_lines.end())
+    {
+        add_section_line(section, "");
+        section_it = --m_section_lines.end();
+    }
+    
+    auto key_val_it = (*section_it)->m_key_val_lines.begin();
+    while (key_val_it != (*section_it)->m_key_val_lines.end())
+    {
+        if ((*key_val_it)->m_key == key)
+        {
+            (*key_val_it)->m_value = value;
+            break;
+        }
+        ++key_val_it;
+    }
+    if (key_val_it == (*section_it)->m_key_val_lines.end())
+    {
+        IniKeyValLine* key_val_line = new IniKeyValLine(key, value, "");
+        auto& last_it = (*section_it)->m_last_it;
+        m_lines.insert(++last_it, key_val_line);
+        --last_it;
+    }
+}
+
+void IniFile::throw_parse_error(const std::string& line)
 {
     //当前行
     int n_line = m_lines.size() + 1;
@@ -222,7 +277,7 @@ void IniFile::throw_parse_error(std::string& line)
     throw error.str();
 }
 
-void IniFile::throw_no_section(std::string& line)
+void IniFile::throw_no_section(const std::string& line)
 {
     int n_line = m_lines.size() + 1;
     std::stringstream error;

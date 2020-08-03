@@ -32,7 +32,7 @@ public:
 class IniCommentLine : public IniLine
 {
 public:
-    IniCommentLine(std::string& comment) : 
+    IniCommentLine(const std::string& comment) : 
         m_comment(comment){};
     
     virtual void write_line(std::fstream& file);
@@ -45,7 +45,7 @@ public:
 class IniKeyValLine : public IniLine
 {
 public:
-    IniKeyValLine(std::string& key, std::string& value, std::string& comment) :
+    IniKeyValLine(const std::string& key, const std::string& value, const std::string& comment) :
         m_key(key), 
         m_value(value), 
         m_comment(comment) {}
@@ -64,15 +64,16 @@ public:
 class IniSecticonLine : public IniLine
 {
 public:
-    IniSecticonLine(std::string& section, std::string& comment) : 
+    IniSecticonLine(const std::string& section, const std::string& comment) : 
         m_section(section), 
         m_comment(comment) {}
 
     virtual void write_line(std::fstream& file);
-
     //重载运算符[]
     std::string& operator[](const std::string& key);
 
+    //指向当前section最后一行的迭代器
+    IniLine::iterator m_last_it;
     //section名称
     std::string m_section;
     //该行的注释
@@ -91,6 +92,9 @@ public:
     void load_file(std::string& file_name);
     //写入文件
     void write();
+    //释放
+    void release();
+
     //获取字符串类型value值
     std::string get_string_value(const std::string& section, const std::string& key);
     //获取int类型value值
@@ -105,22 +109,23 @@ public:
     //设置double类型value值
     void set_value(const std::string& section, const std::string& key, double value);
 
+    //添加值
+    void add_value(const std::string& section, const std::string& key, const std::string& value);
+    //chon
     IniSecticonLine& operator[](const std::string& section);
 
 private:
     //添加注释行 空行
-    void add_comment_line(std::string& comment);
+    void add_comment_line(const std::string& comment);
     //添加section行
-    void add_section_line(std::string& section, std::string& comment);
+    void add_section_line(const std::string& section, const std::string& comment);
     //添加键值对行
-    void add_key_val_line(std::string& key, std::string& val, std::string& comment);
+    void add_key_val_line(const std::string& key, const std::string& val, const std::string& comment);
 
     //抛出解析异常
-    void throw_parse_error(std::string& line);
+    void throw_parse_error(const std::string& line);
     //抛出无section异常
-    void throw_no_section(std::string& line);
-
-    void pasrse_assert(bool b, std::string& line);
+    void throw_no_section(const std::string& line);
 
 private:
     //文件名称
