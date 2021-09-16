@@ -7,139 +7,99 @@ class freelockqueue
 {
     typedef unsigned int index_t;
 
-    enum result_status
+    struct node
     {
-        enqueue_complate,
-        enqueue_chunk_not_enough,
-
-        dequeue_complate,
-        dequeue_chunk_end,
-        dequeue_chunk_empty
+        union
+        {
+            char value[sizeof(T)];
+            node* en_next;
+        };
+        node* de_next;
     };
 
     struct chunk
     {
-        template<typename U>
-        result_status enqueue(U&& value)
+        chunk()
         {
-            index_t tail_index;
-            do
+            for (int i = 0; i < N - 1; i++)
             {
-                tail_index = _flush_index.load(std::memory_order_relaxed);
-
-                if (tail_index >= N)
-                    return enqueue_chunk_not_enough;
-
-            } while (!_flush_index.compare_exchange_weak(tail_index, tail_index + 1, std::memory_order_relaxed));
-
-            new (&_value[tail_index]) T(std::move(value));
-
-            while (!_tail_index.compare_exchange_weak(tail_index, tail_index + 1)) {};
-            return enqueue_complate;
+                _nodes[i].en_next = &_nodes[i + 1];
+                _nodes[i].de_next = nullptr;
+            }
+            _nodes[N - 1].en_next = nullptr;
+            _nodes[N - 1].de_next = nullptr;
         }
 
-        result_status dequeue(T& value)
-        {
-            index_t head_index;
-            index_t tail_index;
+        node* tail_node() { return &_nodes[N - 1]; }
+        node* head_node() { return &_nodes[0]; }
 
-            do
-            {
-                head_index = _head_index.load(std::memory_order_relaxed);
-                tail_index = _tail_index.load(std::memory_order_relaxed);
-
-                if (head_index >= N)
-                    return dequeue_chunk_end;
-
-                if (head_index >= tail_index)
-                    return dequeue_chunk_empty;
-
-            } while (!_head_index.compare_exchange_weak(head_index, head_index + 1, std::memory_order_relaxed));
-
-            value = std::move((T)_value[head_index]);
-            return dequeue_complate;
-        }
-
-        char _buf[N * sizeof(T)]{ 0 };
-        T* _value{ (T*)_buf };
-        std::atomic<index_t> _head_index{ 0 };
-        std::atomic<index_t> _tail_index{ 0 };
-        std::atomic<index_t> _flush_index{ 0 };
-        chunk* _next{ nullptr };
+        node _nodes[N];
+        chunk* next{ nullptr };
     };
 
 public:
-    freelockqueue() {}
+    freelockqueue()
+    {
+        chunk* head_chunk = _head_chunk.load();
+        chunk* tail_chunk = _tail_chunk.load();
+        _en_node.store(&head_chunk->_nodes[0]);
+        _de_node.store(&tail_chunk->_nodes[0]);
+
+    }
     ~freelockqueue() {}
 
     template<typename U>
-    void enqueue(U&& vaule)
+    void enqueue(U&& value)
     {
-        chunk* tail_chunk = _tail_chunk.load(std::memory_order_relaxed);
-        result_status rs = tail_chunk->enqueue(std::forward<U>(vaule));
-        while (rs == enqueue_chunk_not_enough)
-        {
-            bool new_chunk = false;
-            if (_new_chunk.compare_exchange_strong(new_chunk, true))
-            {
-                tail_chunk = _tail_chunk.load(std::memory_order_relaxed);
-                rs = tail_chunk->enqueue(std::move(vaule));
-                if (rs == enqueue_chunk_not_enough)
-                {
-                    /*      std::atomic<chunk_t*> ck;
-                          ck.store(new chunk_t);*/
-                    chunk* ck = new chunk;
-                    _tail_chunk.load(std::memory_order_relaxed)->_next = ck;
-                    _tail_chunk.store(ck);
-                    _chunk_count++;
-
-                    _new_chunk.store(false, std::memory_order_release);
-
-                    rs = _tail_chunk.load(std::memory_order_relaxed)->enqueue(std::move(vaule));
-                    if (rs != enqueue_complate)
-                        continue;
-                    else
-                        break;
-                }
-                _new_chunk.store(false, std::memory_order_release);
-            }
-        }
-    }
-
-    bool dequeue(T& value)
-    {
-        chunk* head_chunk;
-
+        node* en_node;
         do
         {
-            head_chunk = _head_chunk.load(std::memory_order_relaxed);
-            result_status rs = head_chunk->dequeue(value);
-
-            if (rs == dequeue_complate)
-                break;
-
-            if (rs == dequeue_chunk_end)
+            en_node = _en_node.load(std::memory_order_relaxed);
+            while (en_node->en_next == nullptr)
             {
-                if (head_chunk->_next == nullptr)
-                    return false;
-                _head_chunk.store(head_chunk->_next);
-                delete head_chunk;
-                _chunk_count--;
-                continue;
+                bool new_chunk = false;
+                if (_new_chunk.compare_exchange_weak(new_chunk, true))
+                {
+                    en_node = _en_node.load(std::memory_order_relaxed);
+                    if (en_node->en_next != nullptr)
+                        continue;
+                    chunk* tail_chunk = _tail_chunk.load();
+                    chunk* ck = new chunk;
+                    tail_chunk->next = ck;
+                    _tail_chunk.store(ck);
+
+                    en_node->en_next = ck->head_node();
+                    _new_chunk.store(true);
+                    break;
+                }
+                en_node = _en_node.load(std::memory_order_relaxed);
             }
 
-            if (rs == dequeue_chunk_empty)
+        } while (!_en_node.compare_exchange_weak(en_node, en_node->en_next));
+
+        en_node->de_next = en_node->en_next;
+        new (en_node->value) T(std::move(value));
+    }
+
+    bool try_dequeue(T& value)
+    {
+        node* de_node;
+        do
+        {
+            de_node = _de_node.load();
+            if (de_node->de_next == nullptr)
                 return false;
+        } while (!_de_node.compare_exchange_weak(de_node, de_node->de_next));
 
-        } while (1);
-
-        return true;
+        value = std::move(*(T*)de_node->value);
     }
 
 private:
     std::atomic<chunk*> _head_chunk{ new chunk };
-    std::atomic<chunk*> _tail_chunk{ _head_chunk.load(std::memory_order_relaxed) };
+    std::atomic<chunk*> _tail_chunk{ _head_chunk.load() };
 
-    std::atomic<int> _chunk_count{ 0 };
+    std::atomic<node*> _en_node{ nullptr };
+    std::atomic<node*> _de_node{ nullptr };
+
     std::atomic<bool> _new_chunk{ false };
 };
